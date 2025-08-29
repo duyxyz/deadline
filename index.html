@@ -146,20 +146,22 @@
 
     window.onload = () => {
       const saved = JSON.parse(localStorage.getItem("tasks")) || [];
-      saved.forEach(t => addTaskToTable(t.name, t.done));
+      reloadTable(saved);
     };
 
     function addTask() {
       const task = inputTask.value.trim();
       if (!task) return;
-      addTaskToTable(task, false);
-      saveTasks();
+      const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+      tasks.unshift({ name: task, done: false }); // thêm lên đầu
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+      reloadTable(tasks);
       inputTask.value = "";
       hideForm();
     }
 
     function addTaskToTable(name, done) {
-      const row = table.insertRow(1);
+      const row = table.insertRow(-1);
       const cellTask = row.insertCell(0);
       const cellOptions = row.insertCell(1);
 
@@ -183,6 +185,20 @@
       localStorage.setItem("tasks", JSON.stringify(tasks));
     }
 
+    function sortTasks() {
+      const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+      const notDone = tasks.filter(t => !t.done);
+      const done = tasks.filter(t => t.done);
+      const sorted = [...notDone, ...done];
+      localStorage.setItem("tasks", JSON.stringify(sorted));
+      reloadTable(sorted);
+    }
+
+    function reloadTable(data) {
+      while (table.rows.length > 1) table.deleteRow(1);
+      data.forEach(t => addTaskToTable(t.name, t.done));
+    }
+
     /* Context menu */
     function showContextMenu(target) {
       const rect = target.getBoundingClientRect();
@@ -196,10 +212,9 @@
     document.getElementById("doneBtn").onclick = () => {
       if (currentRow) {
         const cell = currentRow.cells[0];
-        const isDone = cell.classList.contains("done");
-        if (isDone) cell.classList.remove("done");
-        else cell.classList.add("done");
+        cell.classList.toggle("done");
         saveTasks();
+        sortTasks();  // sắp xếp lại sau khi toggle
       }
       hideContextMenu();
     };
@@ -210,6 +225,7 @@
         const newName = prompt("Tên công việc mới:", name) || name;
         currentRow.cells[0].textContent = newName;
         saveTasks();
+        sortTasks();
       }
       hideContextMenu();
     };
@@ -263,18 +279,13 @@
           const imported = JSON.parse(e.target.result);
           if (Array.isArray(imported)) {
             localStorage.setItem("tasks", JSON.stringify(imported));
-            reloadTable(imported);
+            sortTasks();
             alert("✅ Nhập dữ liệu thành công!");
           } else { alert("❌ File không hợp lệ!"); }
         } catch { alert("❌ Lỗi khi đọc file!"); }
       };
       reader.readAsText(file);
       hideContextMenu();
-    }
-
-    function reloadTable(data) {
-      while (table.rows.length > 1) table.deleteRow(1);
-      data.forEach(t => addTaskToTable(t.name, t.done));
     }
 
     /* Service Worker */
